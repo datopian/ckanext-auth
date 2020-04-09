@@ -1,57 +1,45 @@
-.. You should enable this project on travis-ci.org and coveralls.io to make
-   these badges work. The necessary Travis and Coverage config files have been
-   generated for you.
-
-.. image:: https://travis-ci.org/datopian/ckanext-auth.svg?branch=master
-    :target: https://travis-ci.org/datopian/ckanext-auth
-
-.. image:: https://coveralls.io/repos/datopian/ckanext-auth/badge.svg
-  :target: https://coveralls.io/r/datopian/ckanext-auth
-
-.. image:: https://pypip.in/download/ckanext-auth/badge.svg
-    :target: https://pypi.python.org/pypi//ckanext-auth/
-    :alt: Downloads
-
-.. image:: https://pypip.in/version/ckanext-auth/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-auth/
-    :alt: Latest Version
-
-.. image:: https://pypip.in/py_versions/ckanext-auth/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-auth/
-    :alt: Supported Python versions
-
-.. image:: https://pypip.in/status/ckanext-auth/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-auth/
-    :alt: Development Status
-
-.. image:: https://pypip.in/license/ckanext-auth/badge.svg
-    :target: https://pypi.python.org/pypi/ckanext-auth/
-    :alt: License
-
 =============
 ckanext-auth
 =============
 
-.. Put a description of your extension here:
-   What does it do? What features does it have?
-   Consider including some screenshots or embedding a video!
+Use CKAN Classic as an auth service in your application.
 
+It adds a new `user_login` action to the CKAN API so that you can call it for authentication of a user:
+
+* Method: POST
+* Endpoint: `http://ckan:5000/api/3/action/user_login`
+* Headers: `Authorization` with sysadmin API key
+* Body: `{"id": <username>, "password": <password>}`
+
+Example of using it in the NodeJS app:
+
+```javascript
+const loginViaCKAN = async function(body) {
+   // Call `user_login` action here
+}
+
+app.post("/login", async (req, res) => {
+   const loggedUser = await loginViaCKAN(req.body)
+   if (loggedUser) {
+      // Add logged user to session
+      req.session.ckan_user = loggedUser
+      res.redirect('/dashboard')
+   } else {
+      req.flash('error_messages', 'Invalid username or password.')
+      res.redirect('/login')
+   }
+})
+```
 
 ------------
 Requirements
 ------------
 
-For example, you might want to mention here which versions of CKAN this
-extension works with.
-
+This has been tested on CKAN v2.8.2.
 
 ------------
 Installation
 ------------
-
-.. Add any additional install steps to the list below.
-   For example installing any non-Python dependencies or adding any required
-   config settings.
 
 To install ckanext-auth:
 
@@ -61,7 +49,7 @@ To install ckanext-auth:
 
 2. Install the ckanext-auth Python package into your virtual environment::
 
-     pip install ckanext-auth
+     pip install --no-cache-dir -e git+https://github.com/datopian/ckanext-auth.git#egg=ckanext-auth
 
 3. Add ``auth`` to the ``ckan.plugins`` setting in your CKAN
    config file (by default the config file is located at
@@ -70,18 +58,6 @@ To install ckanext-auth:
 4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
 
      sudo service apache2 reload
-
-
----------------
-Config Settings
----------------
-
-Document any optional config settings here. For example::
-
-    # The minimum number of hours to wait before re-checking a resource
-    # (optional, default: 24).
-    ckanext.auth.some_setting = some_default_value
-
 
 ------------------------
 Development Installation
@@ -93,74 +69,3 @@ do::
     git clone https://github.com/datopian/ckanext-auth.git
     cd ckanext-auth
     python setup.py develop
-    pip install -r dev-requirements.txt
-
-
------------------
-Running the Tests
------------------
-
-To run the tests, do::
-
-    nosetests --nologcapture --with-pylons=test.ini
-
-To run the tests and produce a coverage report, first make sure you have
-coverage installed in your virtualenv (``pip install coverage``) then run::
-
-    nosetests --nologcapture --with-pylons=test.ini --with-coverage --cover-package=ckanext.auth --cover-inclusive --cover-erase --cover-tests
-
-
----------------------------------
-Registering ckanext-auth on PyPI
----------------------------------
-
-ckanext-auth should be availabe on PyPI as
-https://pypi.python.org/pypi/ckanext-auth. If that link doesn't work, then
-you can register the project on PyPI for the first time by following these
-steps:
-
-1. Create a source distribution of the project::
-
-     python setup.py sdist
-
-2. Register the project::
-
-     python setup.py register
-
-3. Upload the source distribution to PyPI::
-
-     python setup.py sdist upload
-
-4. Tag the first release of the project on GitHub with the version number from
-   the ``setup.py`` file. For example if the version number in ``setup.py`` is
-   0.0.1 then do::
-
-       git tag 0.0.1
-       git push --tags
-
-
-----------------------------------------
-Releasing a New Version of ckanext-auth
-----------------------------------------
-
-ckanext-auth is availabe on PyPI as https://pypi.python.org/pypi/ckanext-auth.
-To publish a new version to PyPI follow these steps:
-
-1. Update the version number in the ``setup.py`` file.
-   See `PEP 440 <http://legacy.python.org/dev/peps/pep-0440/#public-version-identifiers>`_
-   for how to choose version numbers.
-
-2. Create a source distribution of the new version::
-
-     python setup.py sdist
-
-3. Upload the source distribution to PyPI::
-
-     python setup.py sdist upload
-
-4. Tag the new release of the project on GitHub with the version number from
-   the ``setup.py`` file. For example if the version number in ``setup.py`` is
-   0.0.2 then do::
-
-       git tag 0.0.2
-       git push --tags
