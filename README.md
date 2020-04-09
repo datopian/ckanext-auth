@@ -1,7 +1,3 @@
-=============
-ckanext-auth
-=============
-
 Use CKAN Classic as an auth service in your application.
 
 It adds a new `user_login` action to the CKAN API so that you can call it for authentication of a user:
@@ -31,15 +27,11 @@ app.post("/login", async (req, res) => {
 })
 ```
 
-------------
-Requirements
-------------
+## Requirements
 
 This has been tested on CKAN v2.8.2.
 
-------------
-Installation
-------------
+## Installation
 
 To install ckanext-auth:
 
@@ -58,14 +50,3 @@ To install ckanext-auth:
 4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
 
      sudo service apache2 reload
-
-------------------------
-Development Installation
-------------------------
-
-To install ckanext-auth for development, activate your CKAN virtualenv and
-do::
-
-    git clone https://github.com/datopian/ckanext-auth.git
-    cd ckanext-auth
-    python setup.py develop
