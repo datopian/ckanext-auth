@@ -4,7 +4,6 @@ It adds a new `user_login` action to the CKAN API so that you can call it for au
 
 * Method: POST
 * Endpoint: `http://ckan:5000/api/3/action/user_login`
-* Headers: `Authorization` with sysadmin API key
 * Body: `{"id": <username>, "password": <password>}`
 
 Example of using it in the NodeJS app:
