@@ -1,6 +1,6 @@
-Use CKAN Classic as an auth service in your application.
+Use CKAN  as an auth service in your application.
 
-It adds a new `user_login` action to the CKAN API so that you can call it for authentication of a user:
+It adds a new `user_login` action to the CKAN API so that you can call it for authentication of a user from a third party application:
 
 * Method: POST
 * Endpoint: `http://ckan:5000/api/3/action/user_login`
