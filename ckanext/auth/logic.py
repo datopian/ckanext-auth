@@ -15,6 +15,7 @@ def user_login(context, data_dict):
     }
     model = context['model']
     user = model.User.get(data_dict['id'])
+
     if not user:
         return generic_error_message
 
@@ -27,9 +28,13 @@ def user_login(context, data_dict):
         }
 
         auth = authenticator.UsernamePasswordAuthenticator()
-        authUser = auth.authenticate(context, identity)
-
-        if authUser != user['name']:
-            return generic_error_message
-        else:
-            return user
+        
+        try:
+            authUser_id = auth.authenticate(context, identity).split(',')[0]
+            authUser_name = model.User.get(authUser_id).name
+            if authUser_name != user['name']:
+                return generic_error_message
+            else:
+                return user
+        except:
+            return generic_error_message        
