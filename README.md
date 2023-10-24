@@ -28,7 +28,7 @@ app.post("/login", async (req, res) => {
 
 ## Requirements
 
-This has been tested on CKAN v2.8.2.
+This has been tested on CKAN v2.10.
 
 ## Installation
 
