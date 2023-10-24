@@ -1,9 +1,11 @@
-import ckan.logic as logic
+import logging
+
 import ckan.lib.authenticator as authenticator
-from ckan.plugins import toolkit as tk
 from ckan.common import _
 
-_check_access = logic.check_access
+
+log = logging.getLogger(__name__)
+
 
 def user_login(context, data_dict):
     # Adapted from  https://github.com/ckan/ckan/blob/master/ckan/views/user.py#L203-L211
@@ -27,14 +29,16 @@ def user_login(context, data_dict):
             u'password': data_dict[u'password']
         }
 
-        auth = authenticator.UsernamePasswordAuthenticator()
-        
+        auth = authenticator
+
         try:
-            authUser_id = auth.authenticate(context, identity).split(',')[0]
-            authUser_name = model.User.get(authUser_id).name
+            authUser = auth.default_authenticate(identity)
+            authUser_name = model.User.get(authUser.id).name
+
             if authUser_name != user['name']:
                 return generic_error_message
             else:
                 return user
-        except:
-            return generic_error_message        
+        except Exception as e:
+            log.error(e)
+            return generic_error_message
