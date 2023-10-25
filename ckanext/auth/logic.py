@@ -15,6 +15,10 @@ def user_login(context, data_dict):
         },
         u'error_summary': {_(u'auth'): _(u'Incorrect username or password')}
     }
+
+    if not data_dict.get(u'id') or not data_dict.get(u'password'):
+        return generic_error_message
+
     model = context['model']
     user = model.User.get(data_dict['id'])
 
