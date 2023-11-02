@@ -52,7 +52,7 @@ To install ckanext-auth:
 
 ## Configuration
 
-If you're using a separate frontend library to handle user logins, you might need to pass a user API token to the frontend for CRUD operations. The following configuration option generated a new user API token each time a user logs in. The token will be included as `frontend_token` in the `user` object response of the `user_login` action:
+If you're using a separate frontend library to handle user logins, you might need to pass a user API token to the frontend for CRUD operations. The following configuration option generates a new user API token each time a user logs in. The token will be included as `frontend_token` in the `user` object response of the `user_login` action:
 
      ckanext.auth.include_frontend_login_token = True
 
