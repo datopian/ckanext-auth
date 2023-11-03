@@ -54,7 +54,7 @@ def user_login(context, data_dict):
 
 def generate_token(context, user):
     context['ignore_auth'] = True
-    user['login_token'] = None
+    user['frontend_token'] = None
 
     try:
         api_tokens = {}
