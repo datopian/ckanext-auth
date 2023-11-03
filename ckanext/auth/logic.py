@@ -57,13 +57,10 @@ def generate_token(context, user):
     user['frontend_token'] = None
 
     try:
-        api_tokens = {}
         api_tokens = toolkit.get_action('api_token_list')(
             context,
             {'user_id': user['name']}
         )
-
-        login_token = None
 
         for token in api_tokens:
             if token['name'] == 'frontend_token':
@@ -72,12 +69,12 @@ def generate_token(context, user):
                     {'jti': token['id']}
                 )
 
-        login_token = toolkit.get_action('api_token_create')(
+        frontend_token = toolkit.get_action('api_token_create')(
             context,
             {'user': user['name'], 'name': 'frontend_token'}
         )
 
-        user['frontend_token'] = login_token.get('token')
+        user['frontend_token'] = frontend_token.get('token')
 
     except Exception as e:
         log.error(e)
