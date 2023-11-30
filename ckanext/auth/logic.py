@@ -38,8 +38,6 @@ def get_azure_keys(tenant_id):
 def validate_azure_jwt(token):
     tenant_id = config.get('ckanext.auth.azure_tenant_id')
     client_id = config.get('ckanext.auth.azure_client_id')
-    log.error(f'Azure tenant ID: {tenant_id}')
-    log.error(f'Azure client ID: {client_id}')
     issuer = f'https://login.microsoftonline.com/{tenant_id}/v2.0'
 
     if not tenant_id or not client_id:
@@ -99,17 +97,26 @@ def user_login(context, data_dict):
                 random.choice(string.ascii_letters + string.digits)
                 for _ in range(password_length)
             )
-            user = toolkit.get_action('user_create')(
-                context,
-                {
-                    'name': user_email.split('@')[0],
-                    'display_name': data_dict['name'],
-                    'fullname': data_dict['name'],
-                    'email': user_email,
-                    'password': password,
-                    'state': 'active',
-                },
-            )
+
+            try:
+                user_name = ''.join(
+                    c if c.isalnum() else '_' for c in user_email.split('@')[0]
+                )
+                user = toolkit.get_action('user_create')(
+                    context,
+                    {
+                        'name': user_name,
+                        'display_name': data_dict['name'],
+                        'fullname': data_dict['name'],
+                        'email': user_email,
+                        'password': password,
+                        'state': 'active',
+                    },
+                )
+            except Exception as e:
+                log.error(f'Error creating user: \n{e}')
+                return generic_error_message
+
             log.info(f'User created: \n{user}')
         else:
             log.info('User already exists')
