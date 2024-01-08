@@ -68,6 +68,8 @@ def validate_azure_jwt(token):
 
 
 def user_login(context, data_dict):
+    session = context['session']
+
     # Adapted from  https://github.com/ckan/ckan/blob/master/ckan/views/user.py#L203-L211
     generic_error_message = {
         'errors': {'auth': [_('Username or password entered was incorrect')]},
@@ -79,7 +81,6 @@ def user_login(context, data_dict):
     if from_azure:
         jwt_token = data_dict['id_token']
         model = context['model']
-        session = context['session']
         context['ignore_auth'] = True
 
         validated_token = validate_azure_jwt(jwt_token)
@@ -136,7 +137,10 @@ def user_login(context, data_dict):
         return generic_error_message
 
     model = context['model']
-    user = model.User.get(data_dict['id'])
+    if "@" in data_dict.get("id", ""):
+        user = session.query(model.User).filter(model.User.email == data_dict.get("id", "")).first()
+    else:
+        user = model.User.get(data_dict['id'])
 
     if not user:
         return generic_error_message
