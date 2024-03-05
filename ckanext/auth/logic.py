@@ -5,6 +5,7 @@ from jwt.algorithms import RSAAlgorithm
 from cryptography.hazmat.primitives import serialization
 import random
 import string
+from sqlalchemy import func
 
 import ckan.lib.authenticator as authenticator
 from ckan.common import _, config
@@ -89,7 +90,7 @@ def user_login(context, data_dict):
         if not user_email or not validated_token:
             return generic_error_message
 
-        user = session.query(model.User).filter(model.User.email == user_email).first()
+        user = session.query(model.User).filter(func.lower(model.User.email) == func.lower(user_email)).first()
 
         if not user:
             log.info(f'No user found with email {user_email}. Creating user...')
@@ -101,7 +102,7 @@ def user_login(context, data_dict):
 
             try:
                 user_name = ''.join(
-                    c if c.isalnum() else '_' for c in user_email.split('@')[0]
+                    c.lower() if c.isalnum() else '_' for c in user_email.split('@')[0]
                 )
                 user = toolkit.get_action('user_create')(
                     context,
