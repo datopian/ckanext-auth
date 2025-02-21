@@ -8,149 +8,155 @@ import ckan.plugins.toolkit as toolkit
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj,
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['id'],
-            'password': 'testpass1234'
+def test_login(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj,
         }
-    )
 
-    assert login['name'] == userobj['name']
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['id'],
+                'password': 'testpass1234'
+            }
+        )
+
+        assert login['name'] == userobj['name']
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_w_email():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj,
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['email'],
-            'password': 'testpass1234'
+def test_login_w_email(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj,
         }
-    )
 
-    assert login['name'] == userobj['name']
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['email'],
+                'password': 'testpass1234'
+            }
+        )
 
-
-@pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_wrong_password():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj,
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['id'],
-            'password': 'wrongpassword'
-        }
-    )
-
-    assert login['error_summary']['auth'] == 'Incorrect username or password'
+        assert login['name'] == userobj['name']
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_missing_field():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj,
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['id'],
+def test_login_wrong_password(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj,
         }
-    )
 
-    assert login['error_summary']['auth'] == 'Incorrect username or password'
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['id'],
+                'password': 'wrongpassword'
+            }
+        )
+
+        assert login['error_summary']['auth'] == 'Incorrect username or password'
+
+
+@pytest.mark.usefixtures('with_plugins', 'test_request_context')
+def test_login_missing_field(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj,
+        }
+
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['id'],
+            }
+        )
+
+        assert login['error_summary']['auth'] == 'Incorrect username or password'
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
 @pytest.mark.ckan_config('ckanext.auth.include_frontend_login_token', True)
-def test_login_frontend_token_enabled():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['id'],
-            'password': 'testpass1234'
+def test_login_frontend_token_enabled(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj
         }
-    )
 
-    assert login['name'] == userobj['name']
-    assert login['frontend_token'] is not None
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['id'],
+                'password': 'testpass1234'
+            }
+        )
 
-    # Check that the token is valid
-    tokens = toolkit.get_action('api_token_list')(
-        context,
-        {'user_id': userobj['name']}
-    )
+        assert login['name'] == userobj['name']
+        assert login['frontend_token'] is not None
 
-    assert len(tokens) == 1
-    assert tokens[0]['name'] == 'frontend_token'
+        # Check that the token is valid
+        tokens = toolkit.get_action('api_token_list')(
+            context,
+            {'user_id': userobj['name']}
+        )
+
+        assert len(tokens) == 1
+        assert tokens[0]['name'] == 'frontend_token'
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
 @pytest.mark.ckan_config('ckanext.auth.include_frontend_login_token', False)
-def test_login_frontend_token_disabled():
-    userobj = factories.Sysadmin(password='testpass1234')
-    session = model.Session
-    context = {
-        'model': model,
-        'session': session,
-        'user': userobj['name'],
-        'ignore_auth': True,
-        'user_obj': userobj
-    }
-
-    login = auth_logic.user_login(
-        context=context,
-        data_dict={
-            'id': userobj['id'],
-            'password': 'testpass1234'
+def test_login_frontend_token_disabled(app):
+    with app.flask_app.app_context():
+        userobj = factories.Sysadmin(password='testpass1234')
+        session = model.Session
+        context = {
+            'model': model,
+            'session': session,
+            'user': userobj['name'],
+            'ignore_auth': True,
+            'user_obj': userobj
         }
-    )
 
-    assert login['name'] == userobj['name']
-    assert 'frontend_token' not in login
+        login = auth_logic.user_login(
+            context=context,
+            data_dict={
+                'id': userobj['id'],
+                'password': 'testpass1234'
+            }
+        )
+
+        assert login['name'] == userobj['name']
+        assert 'frontend_token' not in login
