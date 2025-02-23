@@ -8,8 +8,8 @@ import ckan.plugins.toolkit as toolkit
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login(app):
-    with app.flask_app.app_context():
+def test_login(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
@@ -30,9 +30,9 @@ def test_login(app):
 
         assert login['name'] == userobj['name']
 
-@pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_w_email(app):
-    with app.flask_app.app_context():
+@pytest.mark.usefixtures('with_plugins', 'auth')
+def test_login_w_email(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
@@ -55,8 +55,8 @@ def test_login_w_email(app):
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_wrong_password(app):
-    with app.flask_app.app_context():
+def test_login_wrong_password(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
@@ -79,8 +79,8 @@ def test_login_wrong_password(app):
 
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
-def test_login_missing_field(app):
-    with app.flask_app.app_context():
+def test_login_missing_field(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
@@ -103,8 +103,8 @@ def test_login_missing_field(app):
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
 @pytest.mark.ckan_config('ckanext.auth.include_frontend_login_token', True)
-def test_login_frontend_token_enabled(app):
-    with app.flask_app.app_context():
+def test_login_frontend_token_enabled(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
@@ -138,8 +138,8 @@ def test_login_frontend_token_enabled(app):
 
 @pytest.mark.usefixtures('with_plugins', 'test_request_context')
 @pytest.mark.ckan_config('ckanext.auth.include_frontend_login_token', False)
-def test_login_frontend_token_disabled(app):
-    with app.flask_app.app_context():
+def test_login_frontend_token_disabled(app, test_request_context):
+    with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
         session = model.Session
         context = {
