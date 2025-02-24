@@ -30,7 +30,7 @@ def test_login(app, test_request_context):
 
         assert login['name'] == userobj['name']
 
-@pytest.mark.usefixtures('with_plugins', 'auth')
+@pytest.mark.usefixtures('with_plugins', 'test_request_context')
 def test_login_w_email(app, test_request_context):
     with test_request_context():
         userobj = factories.Sysadmin(password='testpass1234')
