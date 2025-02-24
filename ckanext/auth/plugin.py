@@ -1,6 +1,6 @@
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
-from ckanext.auth.logic import user_login
+from ckanext.auth.logic import user_login, user_logout
 
 class AuthPlugin(plugins.SingletonPlugin):
     plugins.implements(plugins.IConfigurer)
@@ -15,5 +15,6 @@ class AuthPlugin(plugins.SingletonPlugin):
 
     def get_actions(self):
         return {
-            'user_login': user_login
+            'user_login': user_login,
+            'user_logout': user_logout,
         }
