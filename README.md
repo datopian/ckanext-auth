@@ -1,60 +1,208 @@
-Use CKAN  as an auth service in your application.
+# 🔐 Using CKAN as an Authentication Service
 
-It adds a new `user_login` action to the CKAN API so that you can call it for authentication of a user from a third party application:
+This extension allows you to use CKAN as an authentication provider for third-party applications. It adds a new endpoint for user authentication and a secure password reset workflow using JWT tokens.
 
-* Method: POST
-* Endpoint: `http://ckan:5000/api/3/action/user_login`
-* Body: `{"id": <username>, "password": <password>}`
+## ✨ Features
 
-Example of using it in the NodeJS app:
+- Authenticate users via the `user_login` API
+- Secure password reset workflow using JWT tokens
+- Optional frontend token generation for seamless integration
 
-```javascript
-const loginViaCKAN = async function(body) {
-   // Call `user_login` action here
-}
+## 🔧 Installation
 
-app.post("/login", async (req, res) => {
-   const loggedUser = await loginViaCKAN(req.body)
-   if (loggedUser) {
-      // Add logged user to session
-      req.session.ckan_user = loggedUser
-      res.redirect('/dashboard')
-   } else {
-      req.flash('error_messages', 'Invalid username or password.')
-      res.redirect('/login')
-   }
-})
+1. **Activate your CKAN virtual environment**:
+
+   ```bash
+   . /usr/lib/ckan/default/bin/activate
+   ```
+
+2. **Install the extension**:
+
+   ```bash
+   pip install --no-cache-dir -e git+https://github.com/datopian/ckanext-auth.git#egg=ckanext-auth
+   ```
+
+3. **Enable the plugin** by adding it to your CKAN config file (`/etc/ckan/default/production.ini`):
+
+   ```ini
+   ckan.plugins = ... auth
+   ```
+
+4. **Restart CKAN** (if using Apache on Ubuntu):
+
+   ```bash
+   sudo service apache2 reload
+   ```
+
+## 🔑 User Login API
+
+Use the `user_login` action to authenticate users from third-party applications.
+
+- **Method**: `POST`
+- **Endpoint**: `http://ckan:5000/api/3/action/user_login`
+- **Request Body**:
+
+  ```json
+  {
+    "id": "<username>",
+    "password": "<password>"
+  }
+  ```
+
+## ⚙️ Configuration Options
+
+### `ckan.ini` Settings:
+
+```ini
+# URL used in password reset email links
+ckanext.bhutanopendata.frontend_url = http://example.com/
+
+# Generate a frontend token on login
+ckanext.auth.include_frontend_login_token = True
+# NOTE: This is optional. If set to True, a frontend token will be generated and included in the login response, you can use this token to authenticate users in your frontend application.
 ```
 
-## Requirements
+### ✅ User login Flow
 
-This has been tested on CKAN v2.10.
+- **Endpoint**:
+  `POST /api/3/action/user_login`
+- **Request Body**:
 
-## Installation
+  ```json
+  {
+    "id": "<username>",
+    "password": "<password>"
+  }
+  ```
 
-To install ckanext-auth:
+- **Responses**:
 
-1. Activate your CKAN virtual environment, for example::
+  - **Success**:
 
-     . /usr/lib/ckan/default/bin/activate
+    ```json
+    {
+      "success": true,
+      "result": {
+        "id": "<user_id>",
+        "name": "<username>",
+        "email": "<user_email>",
+        "frontend_token": "<frontend_token>"
+      }
+    }
+    ```
+Below is an example of how to implement this in a Node.js application using Express.
 
-2. Install the ckanext-auth Python package into your virtual environment::
+```javascript
+const loginViaCKAN = async function (body) {
+  const response = await fetch("http://ckan:5000/api/3/action/user_login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const result = await response.json();
+  return result.success ? result.result : null;
+};
 
-     pip install --no-cache-dir -e git+https://github.com/datopian/ckanext-auth.git#egg=ckanext-auth
+app.post("/login", async (req, res) => {
+  const loggedUser = await loginViaCKAN(req.body);
+  if (loggedUser) {
+    req.session.ckan_user = loggedUser;
+    res.redirect("/dashboard");
+  } else {
+    req.flash("error_messages", "Invalid username or password.");
+    res.redirect("/login");
+  }
+});
+```
 
-3. Add ``auth`` to the ``ckan.plugins`` setting in your CKAN
-   config file (by default the config file is located at
-   ``/etc/ckan/default/production.ini``).
+## 🔄 Password Reset Flow
 
-4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu::
+### 1. **Request Reset Email**
 
-     sudo service apache2 reload
+- **Endpoint**:
+  `POST /api/3/action/user_password_reset_request`
 
-## Configuration
+- **Request Body**:
 
-If you're using a separate frontend library to handle user logins, you might need to pass a user API token to the frontend for CRUD operations. The following configuration option generates a new user API token each time a user logs in. The token will be included as `frontend_token` in the `user` object response of the `user_login` action:
+  ```json
+  {
+    "email": "user@example.com"
+  }
+  ```
 
-     ckanext.auth.include_frontend_login_token = True
+- **Responses**:
 
-> **Note**:
-> This token is generated when the user logs in, but **it is not revoked when they logout**. It's only revoked the next time they login, just before the new token is created.
+  - **Success**:
+
+    ```json
+    {
+      "success": true,
+      "message": "Password reset email sent"
+    }
+    ```
+
+  - **Errors**:
+
+    ```json
+    {
+      "error": {
+        "email": ["Email is required"]
+      }
+    }
+    ```
+
+    ```json
+    {
+      "error": {
+        "message": "User with this email does not exist"
+      }
+    }
+    ```
+
+---
+
+### 2. **Confirm Password Reset**
+
+- **Endpoint**:
+  `POST /api/3/action/user_password_reset_confirm`
+
+- **Request Body**:
+
+  ```json
+  {
+    "token": "jwt_token_here",
+    "new_password": "new_secure_password"
+  }
+  ```
+
+- **Responses**:
+
+  - **Success**:
+
+    ```json
+    {
+      "success": true,
+      "message": "Password has been reset successfully"
+    }
+    ```
+
+  - **Errors**:
+
+    ```json
+    {
+      "error": {
+        "token": ["Token is required"],
+        "new_password": ["New password is required"]
+      }
+    }
+    ```
+
+    ```json
+    {
+      "error": {
+        "token": ["Reset token has expired"]
+      }
+    }
+    ```
+
+
