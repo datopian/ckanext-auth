@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Password Reset</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f8fc;
+      color: #333;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      background-color: #ffffff;
+      margin: 0 auto;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .header {
+      text-align: center;
+      color: #1a73e8;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .content {
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 25px;
+      padding: 12px 24px;
+      background-color: #3F59B1;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">{{ site_title }} - Reset Your Password</div>
+    <div class="content">
+      <p>Hi {{ user_name }},</p>
+      <p>We received a request to reset your password. Click the button below to set a new password:</p>
+
+      <p style="text-align: center;">
+        <a href="{{ reset_link }}" class="button">Reset Password</a>
+      </p>
+
+      <p>If you didn’t request a password reset, you can safely ignore this email.</p>
+      <p>This link will expire in 24 hours.</p>
+    </div>
+    <div class="footer">
+      Sent from {{ site_title }}. If you have any questions, please contact support.
+    </div>
+  </div>
+</body>
+</html>
