@@ -1,9 +1,11 @@
 # 🔐 Using CKAN as an Authentication Service
 
-This extension allows you to use CKAN as an authentication provider for third-party applications. It adds a new endpoint for user authentication and a secure password reset workflow using JWT tokens.
+This extension allows you to use CKAN as an authentication provider for third-party applications. It adds a new endpoint for user authentication, a user registration API with email verification, and a secure password reset workflow using JWT tokens.
 
 ## ✨ Features
 
+- User registration API with email verification (accounts start in `pending` state until verified)
+- Resend verification email with Redis-backed rate limiting
 - Authenticate users via the `user_login` API
 - Secure password reset workflow using JWT tokens
 - Optional frontend token generation for seamless integration
@@ -114,6 +116,152 @@ app.post("/login", async (req, res) => {
   }
 });
 ```
+
+## 📝 User Registration & Email Verification
+
+### Configuration
+
+Add to your `ckan.ini`:
+
+```ini
+# Base URL of your frontend (used to build the verification link in emails)
+ckanext.auth.frontend_url = https://example.com
+
+# Token expiry in hours (default: 24)
+ckanext.auth.email_verification_expiry_hours = 24
+```
+
+> **Redis required**: the resend endpoint uses CKAN's built-in Redis connection (same one used for background jobs). Ensure `ckan.redis.url` is configured.
+
+---
+
+### 1. Register a User
+
+Creates a new user account in `pending` state and sends a verification email.
+
+- **Endpoint**: `POST /api/3/action/user_register`
+- **Request Body**:
+
+  ```json
+  {
+    "name": "jdoe",
+    "email": "jdoe@example.com",
+    "password": "secretpassword"
+  }
+  ```
+
+- **Responses**:
+
+  - **Success** — account created, verification email sent:
+
+    ```json
+    {
+      "success": true,
+      "result": {
+        "id": "<user_id>",
+        "name": "jdoe",
+        "email": "jdoe@example.com",
+        "state": "pending"
+      }
+    }
+    ```
+
+  - **Error** — missing fields:
+
+    ```json
+    {
+      "error": {
+        "name": ["Missing value"],
+        "email": ["Missing value"],
+        "password": ["Missing value"]
+      }
+    }
+    ```
+
+---
+
+### 2. Verify Email
+
+The user clicks the link in the verification email which contains a short-lived JWT token.
+
+- **Endpoint**: `POST /api/3/action/user_verify_email`
+- **Request Body**:
+
+  ```json
+  {
+    "token": "<jwt_token_from_email>"
+  }
+  ```
+
+- **Responses**:
+
+  - **Success**:
+
+    ```json
+    {
+      "success": true,
+      "message": "Email verified successfully. You can now log in."
+    }
+    ```
+
+  - **Already verified**:
+
+    ```json
+    {
+      "success": true,
+      "message": "Email already verified"
+    }
+    ```
+
+  - **Errors**:
+
+    ```json
+    { "error": { "token": ["Verification link has expired"] } }
+    ```
+
+    ```json
+    { "error": { "token": ["Invalid verification token"] } }
+    ```
+
+---
+
+### 3. Resend Verification Email
+
+Resends the verification email for accounts still in `pending` state.
+
+**Rate limiting (Redis-backed)**:
+- Per email: one resend allowed every **60 seconds**
+- Per IP: maximum **5 requests per 5 minutes**
+
+- **Endpoint**: `POST /api/3/action/user_resend_verification`
+- **Request Body**:
+
+  ```json
+  {
+    "email": "jdoe@example.com"
+  }
+  ```
+
+- **Response** (always the same regardless of whether the email exists, to avoid user enumeration):
+
+  ```json
+  {
+    "success": true,
+    "message": "If this email is registered and pending verification, a new email link has been sent"
+  }
+  ```
+
+- **Rate limit errors**:
+
+  ```json
+  { "error": { "email": ["Please wait before requesting another verification email"] } }
+  ```
+
+  ```json
+  { "error": { "email": ["Too many requests. Please try again later."] } }
+  ```
+
+---
 
 ## 🔄 Password Reset Flow
 
