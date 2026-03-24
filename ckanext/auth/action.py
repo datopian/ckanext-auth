@@ -4,10 +4,168 @@ from datetime import datetime, timedelta
 
 from ckan.lib.mailer import mail_user, MailerException
 import ckan.lib.authenticator as authenticator
+import ckan.lib.redis as ckan_redis
 from ckan.plugins import toolkit as tk
 
 
 log = logging.getLogger(__name__)
+
+_RESEND_EMAIL_COOLDOWN = 60   # seconds between sends per email
+_RESEND_IP_MAX = 5            # max requests per IP per window
+_RESEND_IP_WINDOW = 300       # IP window in seconds
+
+
+def _check_resend_rate_limit(email, ip):
+    redis = ckan_redis.connect_to_redis()
+
+    # Per-email cooldown: SET NX with TTL — only succeeds on first request
+    email_key = f"ckanext_auth:resend_cooldown:{email}"
+    if not redis.set(email_key, 1, nx=True, ex=_RESEND_EMAIL_COOLDOWN):
+        raise tk.ValidationError(
+            {"email": [tk._("Please wait before requesting another verification email")]}
+        )
+
+    # Per-IP burst limit: INCR counter, set TTL on first hit
+    if ip:
+        ip_key = f"ckanext_auth:resend_ip:{ip}"
+        count = redis.incr(ip_key)
+        if count == 1:
+            redis.expire(ip_key, _RESEND_IP_WINDOW)
+        if count > _RESEND_IP_MAX:
+            # Roll back the email cooldown key so a legitimate user isn't blocked
+            redis.delete(email_key)
+            raise tk.ValidationError(
+                {"email": [tk._("Too many requests. Please try again later.")]}
+            )
+
+
+def _generate_verification_token(user_id):
+    encode_key = tk.config.get("api_token.jwt.encode.secret")
+    encode_algorithm = tk.config.get("api_token.jwt.algorithm", "HS256")
+
+    if not encode_key:
+        raise tk.ValidationError({"error": [tk._("JWT secret key is not configured")]})
+
+    expiry_hours = int(tk.config.get("ckanext.auth.email_verification_expiry_hours", 24))
+    payload = {
+        "user_id": user_id,
+        "purpose": "email_verification",
+        "exp": datetime.utcnow() + timedelta(hours=expiry_hours),
+    }
+    return jwt.encode(payload, encode_key, algorithm=encode_algorithm)
+
+
+def _send_verification_email(user_obj):
+    token = _generate_verification_token(user_obj.id)
+    frontend_url = tk.config.get("ckanext.auth.frontend_url", "").rstrip("/")
+    verify_url = f"{frontend_url}/auth/verify-email?token={token}"
+
+    body_html = tk.render(
+        "emails/email_verification_template.html",
+        {
+            "verify_url": verify_url,
+            "user_name": user_obj.fullname or user_obj.name,
+            "site_title": tk.config.get("ckan.site_title"),
+        },
+    )
+
+    try:
+        mail_user(
+            user_obj,
+            subject="Verify your email address",
+            body="",
+            body_html=body_html,
+        )
+    except MailerException as e:
+        raise tk.ValidationError({"email": [f"Failed to send verification email: {str(e)}"]})
+
+
+def user_register(context, data_dict):
+    """
+    Self-registration endpoint. Creates a new user, sets state to pending,
+    and sends a verification email.
+
+    user_create (called by sysadmins) and user_invite do not go through
+    this flow and are not affected.
+    """
+    context["ignore_auth"] = True
+    context["defer_commit"] = True
+    user = tk.get_action("user_create")(context, data_dict)
+
+    model = context["model"]
+    user_obj = model.User.get(user["id"])
+    user_obj.state = "pending"
+    model.Session.commit()
+
+    
+    _send_verification_email(user_obj)
+
+    return user
+
+
+def user_verify_email(context, data_dict):
+    """
+    Verifies a user's email address using a JWT token.
+    """
+    token = data_dict.get("token")
+    if not token:
+        raise tk.ValidationError({"token": [tk._("Token is required")]})
+
+    decode_key = tk.config.get("api_token.jwt.decode.secret")
+    encode_algorithm = tk.config.get("api_token.jwt.algorithm", "HS256")
+
+    if not decode_key:
+        raise tk.ValidationError({"error": [tk._("JWT secret key is not configured")]})
+
+    try:
+        payload = jwt.decode(token, decode_key, algorithms=[encode_algorithm])
+        if payload.get("purpose") != "email_verification":
+            raise tk.ValidationError({"token": [tk._("Invalid token")]})
+        user_id = payload.get("user_id")
+    except jwt.ExpiredSignatureError:
+        raise tk.ValidationError({"token": [tk._("Verification link has expired")]})
+    except jwt.InvalidTokenError:
+        raise tk.ValidationError({"token": [tk._("Invalid verification token")]})
+
+    model = context["model"]
+    user_obj = model.User.get(user_id)
+    if not user_obj:
+        raise tk.ObjectNotFound(tk._("User not found"))
+
+    if user_obj.state == "active":
+        return {"success": True, "message": tk._("Email already verified")}
+
+    user_obj.state = "active"
+    model.Session.commit()
+
+    return {"success": True, "message": tk._("Email verified successfully. You can now log in.")}
+
+
+def user_resend_verification(context, data_dict):
+    """
+    Resends the verification email for a pending user.
+    """
+    email = data_dict.get("email")
+    if not email:
+        raise tk.ValidationError({"email": [tk._("Email is required")]})
+
+    try:
+        ip = tk.request.remote_addr
+    except RuntimeError:
+        ip = None
+
+    _check_resend_rate_limit(email, ip)
+
+    generic_response = {"success": True, "message": tk._("If this email is registered and pending verification, a new email link has been sent")}
+
+    model = context["model"]
+    user_obj = model.User.by_email(email)
+    if not user_obj or user_obj.state != "pending":
+        return generic_response
+
+    _send_verification_email(user_obj)
+
+    return generic_response
 
 
 def user_login(context, data_dict):
@@ -34,6 +192,12 @@ def user_login(context, data_dict):
 
     if not user:
         return generic_error_message
+
+    if user.state == "pending":
+        return {
+            "errors": {"auth": [tk._("Your account is not yet verified. Please confirm your email address to continue.")]},
+            "error_summary": {tk._("auth"): tk._("Email not verified")},
+        }
 
     user = user.as_dict()
 

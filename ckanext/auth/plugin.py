@@ -16,6 +16,9 @@ class AuthPlugin(plugins.SingletonPlugin):
     def get_actions(self):
         return {
             "user_login": action.user_login,
+            "user_register": action.user_register,
+            "user_verify_email": action.user_verify_email,
+            "user_resend_verification": action.user_resend_verification,
             "user_password_reset_request": action.user_password_reset_request,
             "user_password_reset_confirm": action.user_password_reset_confirm,
         }
