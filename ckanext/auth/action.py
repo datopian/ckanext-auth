@@ -60,6 +60,7 @@ def _send_verification_email(user_obj):
     frontend_url = tk.config.get("ckanext.auth.frontend_url", "").rstrip("/")
     verify_url = f"{frontend_url}/auth/verify-email?token={token}"
 
+
     body_html = tk.render(
         "emails/email_verification_template.html",
         {
@@ -88,16 +89,24 @@ def user_register(context, data_dict):
     user_create (called by sysadmins) and user_invite do not go through
     this flow and are not affected.
     """
+    model = context["model"]
+
+    email = data_dict.get("email", "")
+    existing_user = model.User.by_email(email) if email else None
+    if existing_user:
+        if existing_user.state == "pending":
+            _send_verification_email(existing_user)
+            return existing_user.as_dict()
+        raise tk.ValidationError({"email": [tk._("A user with this email already exists")]})
+
     context["ignore_auth"] = True
     context["defer_commit"] = True
     user = tk.get_action("user_create")(context, data_dict)
 
-    model = context["model"]
     user_obj = model.User.get(user["id"])
     user_obj.state = "pending"
     model.Session.commit()
 
-    
     _send_verification_email(user_obj)
 
     return user
