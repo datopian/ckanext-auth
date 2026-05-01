@@ -57,7 +57,7 @@ Use the `user_login` action to authenticate users from third-party applications.
 
 ```ini
 # URL used in password reset email links
-ckanext.bhutanopendata.frontend_url = http://example.com/
+ckanext.auth.frontend_url = http://example.com/
 
 # Generate a frontend token on login
 ckanext.auth.include_frontend_login_token = True

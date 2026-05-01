@@ -1,6 +1,7 @@
 import jwt
 import logging
 from datetime import datetime, timedelta
+from email.utils import make_msgid
 
 from ckan.lib.mailer import mail_user, MailerException
 import ckan.lib.authenticator as authenticator
@@ -39,6 +40,27 @@ def _check_resend_rate_limit(email, ip):
             )
 
 
+def _build_message_id():
+    # Anchor Message-ID to the sending domain so the d= in DKIM, the From,
+    # and the Message-ID line up — Outlook and Gmail both look for this.
+    mail_from = tk.config.get("smtp.mail_from", "")
+    domain = mail_from.split("@", 1)[1] if "@" in mail_from else None
+    return make_msgid(domain=domain)
+
+
+def _send_html_email(user_obj, subject, body_html):
+    mail_user(
+        user_obj,
+        subject=subject,
+        body=body_html,
+        body_html=None,
+        headers={
+            "Content-Type": 'text/html; charset="utf-8"',
+            "Message-ID": _build_message_id(),
+        },
+    )
+
+
 def _generate_verification_token(user_id):
     encode_key = tk.config.get("api_token.jwt.encode.secret")
     encode_algorithm = tk.config.get("api_token.jwt.algorithm", "HS256")
@@ -59,22 +81,21 @@ def _send_verification_email(user_obj):
     token = _generate_verification_token(user_obj.id)
     frontend_url = tk.config.get("ckanext.auth.frontend_url", "").rstrip("/")
     verify_url = f"{frontend_url}/auth/verify-email?token={token}"
-
+    site_title = tk.config.get("ckan.site_title")
 
     body_html = tk.render(
         "emails/email_verification_template.html",
         {
             "verify_url": verify_url,
             "user_name": user_obj.fullname or user_obj.name,
-            "site_title": tk.config.get("ckan.site_title"),
+            "site_title": site_title,
         },
     )
 
     try:
-        mail_user(
+        _send_html_email(
             user_obj,
-            subject="Verify your email address",
-            body="",
+            subject=f"Verify your email — {site_title}",
             body_html=body_html,
         )
     except MailerException as e:
@@ -290,22 +311,21 @@ def user_password_reset_request(context, data_dict):
     # Generate the reset link
     frontend_url = tk.config.get("ckanext.auth.frontend_url").rstrip("/")
     reset_link = f"{frontend_url}/auth/forgot-password?token={reset_token}"
+    site_title = tk.config.get("ckan.site_title")
 
-    # Render the email template
     body_html = tk.render(
         "emails/paasword_reset_template.html",
         {
             "reset_link": reset_link,
             "user_name": user.fullname or user.name,
-            "site_title": tk.config.get("ckan.site_title"),
+            "site_title": site_title,
         },
     )
     # Send the email
     try:
-        mail_user(
+        _send_html_email(
             user,
-            subject="Password Reset Request",
-            body="",
+            subject=f"Reset your password — {site_title}",
             body_html=body_html,
         )
     except MailerException as e:
